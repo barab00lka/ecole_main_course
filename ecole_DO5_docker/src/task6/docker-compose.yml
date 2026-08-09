@@ -1,0 +1,10 @@
+services:
+    part5-debian:
+      container_name: part5-deb
+      image: debian-with-nginx-secure
+    nginx:
+        image: nginx
+        ports:
+            - 8080:80
+        volumes:
+            - ./nginx/conf.d:/etc/nginx/conf.d:ro
