@@ -1,0 +1,69 @@
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - codestyle
+  - test
+  - deploy
+
+build_cat:
+  stage: build
+  script:
+    - cd src/cat && make
+    - make my_cat
+  after_script: 
+    - cd src
+    #- bash tg.sh "build cat" $CI_PIPELINE_SUCCESS
+  artifacts:
+    paths:
+      - src/cat
+    expire_in: 30 days
+
+build_grep:
+  stage: build
+  script:
+    - cd src/grep
+    - make my_grep
+  after_script: 
+    #- bash src/tg.sh "build grep" $CI_PIPELINE_SUCCESS
+  artifacts:
+    paths:
+      - src/grep
+    expire_in: 30 days
+
+clang-format:
+  stage: codestyle
+  script: 
+    - echo "Checking code style..."
+    - clang-format -n --verbose --Werror --style=file:materials/linters/.clang-format src/cat/*.c src/common/*.c src/grep/*.c src/cat/*.h src/common/*.h src/grep/*.h
+
+test-cat:
+  stage: test
+  script:
+    - echo "Starting my_cat tests..."
+    - cd src/cat
+    - ./t_cat-single-flag.sh
+  
+test-grep:
+  stage: test
+  script: 
+    - echo "Starting my_grep tests..."
+    - cd src/grep
+    - ./tests.sh
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Transfering binaries to production via SCP to 192.168.100.252..."
+    - ./src/deploy.sh
+
+
+notify-pipeline:
+  stage: .post
+  when: always
+  script:
+    - |
+      if [ "$CI_PIPELINE_STATUS" = "failed" ]; then
+        MESSAGE="❌ Pipeline $CI_PIPELINE_ID failed"
+      else
+        MESSAGE="✅ Pipeline $CI_PIPELINE_ID completed successfuly"
+      fi
+    - /usr/local/bin/tg-notify.sh "$MESSAGE"
